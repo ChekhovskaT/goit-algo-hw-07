@@ -44,9 +44,10 @@ class Phone(Field):
 class Birthday(Field):
     def __init__(self, value):
         try:
-            self.value = datetime.strptime(value, "%d.%m.%Y").date()
+            datetime.strptime(value, "%d.%m.%Y")
         except ValueError:
             raise ValueError("Invalid date format. Use DD.MM.YYYY")
+        super().__init__(value)
 
 class Record:
     def __init__(self, name):
@@ -78,7 +79,7 @@ class Record:
 
     def __str__(self):
         phones = '; '.join(p.value for p in self.phones)
-        birthday = f", Birthday: {self.birthday.value.strftime('%d.%m.%Y')}" if self.birthday else ""
+        birthday = f", Birthday: {self.birthday.value}" if self.birthday else ""
         return f"Contact name: {self.name.value}, Phones: {phones}{birthday}"
 
 # Class for storing and managing records
@@ -87,7 +88,7 @@ class AddressBook(UserDict):
         self.data[record.name.value] = record
 
     def find(self, name):
-        return self.data.get(name)
+        return self.data.get(name.lower())
 
     def delete(self, name):
         if name in self.data:
@@ -98,7 +99,7 @@ class AddressBook(UserDict):
         upcoming_birthdays = []
         for record in self.data.values():
             if record.birthday:
-                bday = record.birthday.value.replace(year=today.year)
+                bday = datetime.strptime(record.birthday.value, "%d.%m.%Y").date().replace(year=today.year)
                 if bday < today:
                     bday = bday.replace(year=today.year + 1)
                 if 0 <= (bday - today).days <= 7:
@@ -144,7 +145,7 @@ def show_phone(args, book):
 def show_all(args, book):
     if not book.data:
         return "Address book is empty."
-    return "\n".join(f"{r.name.value}: {', '.join(p.value for p in r.phones)}" for r in book.data.values())
+    return "\n".join(str(r) for r in book.data.values())
 
 @input_error(required_args=2, error_message="Write name and birthday, please")
 def add_birthday(args, book):
@@ -160,7 +161,7 @@ def show_birthday(args, book):
     name = args[0]
     record = book.find(name)
     if record and record.birthday:
-        return record.birthday.value.strftime("%d.%m.%Y")
+        return record.birthday.value
     return "No birthday found."
 
 @input_error(required_args=0)
@@ -170,15 +171,15 @@ def birthdays(args, book):
 
 def parse_input(user_input):
     parts = user_input.strip().split(" ", 1)
-    command = parts[0]
-    args = parts[1].split() if len(parts) > 1 else []
+    command = parts[0].lower()
+    args = parts[1].lower().split() if len(parts) > 1 else []
     return command, args
 
 def main():
     book = AddressBook()
     print("Welcome to the assistant bot!")
     while True:
-        user_input = input("Enter a command: ")
+        user_input = input("Enter a command: ").strip()
         command, args = parse_input(user_input)
 
         if command in ["close", "exit"]:
